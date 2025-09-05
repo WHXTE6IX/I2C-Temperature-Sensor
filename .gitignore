@@ -1,4 +1,8 @@
-# Vivado build junk
+# ==========================
+# Vivado + ModelSim .gitignore
+# ==========================
+
+# Vivado build files
 *.jou
 *.log
 *.str
@@ -8,22 +12,35 @@
 *.runs/
 *.cache/
 *.Xil/
+*.hw
+*.lpr
 
-# Simulation outputs (ignore generated waves, logs, etc.)
+# ModelSim / Simulation outputs
 *.wdb
 *.vcd
 *.vcd.gz
 *.out
-*.pb
 *.svf
 *.sdf
-*.sby
-*.xml
-*.db
 *.ini
+*.db
 
-# Ignore everything in simtest* folders...
-sources_1/new/simtest*/**
+# Temp simtest dirs
+simtest*/**
+simtest*/v
+simtest*/clean
+simtest*/*.out
+simtest*/*.log
+simtest*/*.jou
 
-# ...but keep SystemVerilog testbenches in simtest* folders
-!sources_1/new/simtest*/*.sv
+# OS junk
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Editor junk
+.vscode/
+.idea/
+*.swp
+*.bak
+*.tmp
