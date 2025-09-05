@@ -1,0 +1,29 @@
+# Vivado build junk
+*.jou
+*.log
+*.str
+*.dcp
+*.rpx
+*.xpr
+*.runs/
+*.cache/
+*.Xil/
+
+# Simulation outputs (ignore generated waves, logs, etc.)
+*.wdb
+*.vcd
+*.vcd.gz
+*.out
+*.pb
+*.svf
+*.sdf
+*.sby
+*.xml
+*.db
+*.ini
+
+# Ignore everything in simtest* folders...
+sources_1/new/simtest*/**
+
+# ...but keep SystemVerilog testbenches in simtest* folders
+!sources_1/new/simtest*/*.sv
