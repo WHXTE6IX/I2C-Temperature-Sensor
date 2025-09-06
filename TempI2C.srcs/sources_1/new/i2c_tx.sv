@@ -11,8 +11,10 @@ module i2c_tx(
     input logic tx_begin,
 
 
-    output logic SDA,
-    output logic o_enable_count
+    inout logic SDA,
+    output logic o_enable_count,
+    output logic o_tx_error,
+    output logic o_ack_complete
     );
 
     typedef enum logic [3:0] { 
@@ -25,7 +27,8 @@ module i2c_tx(
     BIT2,
     BIT1,
     BIT0,
-    RW
+    RW,
+    ACK
     } e_state;
 
     e_state state, nextstate;
@@ -60,8 +63,9 @@ module i2c_tx(
                     nextstate = BIT0;
             BIT0: if (i_scl_low_edge_detect)
                     nextstate = RW;
-            RW: if (i_scl_low_edge_detect)
-                    nextstate = IDLE;
+            RW:   if (i_scl_low_edge_detect)
+                    nextstate = ACK;
+            ACK:  // Stay here
 
             default: nextstate = IDLE;
         endcase    
@@ -85,11 +89,25 @@ module i2c_tx(
                 BIT1:   SDA <= i_data[2]; 
                 BIT0:   SDA <= i_data[1]; 
                 RW:     SDA <= i_data[0]; 
+                ACK: begin 
+                    if (i_scl) begin
+                        SDA <= 1;   // Release SDA and wait for ack
+                        if (~i_scl && SDA == 0) begin
+                            o_ack_complete <= 1;
+                            o_tx_error <= 0;
+                            nextstate <= IDLE;
+                        end else if (~i_scl && SDA == 1) begin
+                            o_ack_complete <= 0;
+                            o_tx_error <= 1;
+                            nextstate <= IDLE; 
+                        end
+                        else
+                            nextstate <= ACK;
+                    end else 
+                        nextstate <= ACK; //Poll here until scl is high
+                end  
                 default : SDA <= 1;
             endcase 
         end
-
     end
-
-
 endmodule
