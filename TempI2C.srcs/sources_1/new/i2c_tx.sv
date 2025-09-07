@@ -1,17 +1,17 @@
-
-
 module i2c_tx(
     input logic rst_p,
     input logic CLK100MHZ,
 
     input logic i_scl_low_edge_detect,
     input logic i_scl,
+    input logic i_scl_rising_edge_detect,
 
-    input logic [7:0] i_data,
+    input logic [7:0] i_data_command,
     input logic tx_begin,
+    input logic i_sda,
 
 
-    inout logic SDA,
+    output logic o_sda,
     output logic o_enable_count,
     output logic o_tx_error,
     output logic o_ack_complete
@@ -65,48 +65,49 @@ module i2c_tx(
                     nextstate = RW;
             RW:   if (i_scl_low_edge_detect)
                     nextstate = ACK;
-            ACK:  // Stay here
+            ACK:  if (i_scl_low_edge_detect)
+                    nextstate = IDLE;
 
             default: nextstate = IDLE;
         endcase    
     end
 
     always_ff @(posedge CLK100MHZ or posedge rst_p) begin
-        if (rst_p)
-            SDA <= 1;
-        else begin
+        if (rst_p) begin
+            o_sda           <= 1;
+            o_ack_complete  <= 0;
+            o_tx_error      <= 0;
+            o_enable_count  <= 0;
+        end else begin
+            o_ack_complete  <= 0;
+            o_tx_error      <= 0;
+            o_enable_count  <= 0;
             case (state)
-                IDLE:   SDA <= 1; 
+                IDLE: begin
+                    o_sda           <= 1;
+                    o_ack_complete  <= 0;
+                    o_tx_error      <= 0;
+                end
                 START: begin
-                    SDA <= 0;
+                    o_sda <= 0;
                     o_enable_count <= 1;
                 end 
-                BIT6:   SDA <= i_data[7]; 
-                BIT5:   SDA <= i_data[6]; 
-                BIT4:   SDA <= i_data[5]; 
-                BIT3:   SDA <= i_data[4]; 
-                BIT2:   SDA <= i_data[3]; 
-                BIT1:   SDA <= i_data[2]; 
-                BIT0:   SDA <= i_data[1]; 
-                RW:     SDA <= i_data[0]; 
-                ACK: begin 
-                    if (i_scl) begin
-                        SDA <= 1;   // Release SDA and wait for ack
-                        if (~i_scl && SDA == 0) begin
-                            o_ack_complete <= 1;
-                            o_tx_error <= 0;
-                            nextstate <= IDLE;
-                        end else if (~i_scl && SDA == 1) begin
-                            o_ack_complete <= 0;
-                            o_tx_error <= 1;
-                            nextstate <= IDLE; 
-                        end
-                        else
-                            nextstate <= ACK;
-                    end else 
-                        nextstate <= ACK; //Poll here until scl is high
+                BIT6:   o_sda <= i_data_command[7]; 
+                BIT5:   o_sda <= i_data_command[6]; 
+                BIT4:   o_sda <= i_data_command[5]; 
+                BIT3:   o_sda <= i_data_command[4]; 
+                BIT2:   o_sda <= i_data_command[3]; 
+                BIT1:   o_sda <= i_data_command[2]; 
+                BIT0:   o_sda <= i_data_command[1]; 
+                RW:     o_sda <= i_data_command[0]; 
+                ACK: begin
+                    o_sda <= 1; // Release SDA and wait for ack
+                    if ((state == ACK) && i_scl && ~i_sda)
+                        o_ack_complete <= 1;
+                    else if ((state == ACK) && i_scl && i_sda)
+                        o_tx_error <= 1; 
                 end  
-                default : SDA <= 1;
+                default : o_sda <= 1;
             endcase 
         end
     end
