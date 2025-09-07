@@ -4,7 +4,7 @@ module clk_divider #(
     )(
     input logic CLK100MHZ,
     input logic rst_p,
-    input logic i_enable,
+    input logic i_enable,   //From tx mod 
 
     output logic o_tick
     );

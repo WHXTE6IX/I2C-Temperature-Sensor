@@ -102,7 +102,7 @@ module i2c_tx(
                 RW:     o_sda <= i_data_command[0]; 
                 ACK: begin
                     o_sda <= 1; // Release SDA and wait for ack
-                    if ((state == ACK) && i_scl && ~i_sda)
+                    if ((state == ACK) && i_scl_rising_edge_detect && ~i_sda)
                         o_ack_complete <= 1;
                     else if ((state == ACK) && i_scl && i_sda)
                         o_tx_error <= 1; 

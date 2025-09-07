@@ -3,56 +3,102 @@ module I2C_Master(
     input logic rst_p,
     input logic CLK100MHZ,
 
-    inout logic SDA,
-    input logic i_tick,
+    input logic i_sda,
     input logic i_scl,
 
-    input logic [7:0] data,
-    input logic data_begin,
+    input logic i_byte_complete, // from rx mod
+    input logic i_tx_error, //from tx mod
+    input logic i_ack_complete, // from tx module
+
+
+    output logic [7:0] o_data,
+    output logic o_tx_begin,
+    output logic o_stop_flag,
+    input  logic data_begin,
     
-    output logic o_enable_count 
+    input  logic i_enable_count // from tx mod
     );
 
-    logic [3:0] r_data_count; 
+    localparam CONFIG_REGISTER = 8'h03;
+    localparam CONFIG_REGISTER_DATA = 8'b00000001;
 
-    always_ff @(posedge CLK100MHZ or posedge rst_p) begin      // Shifting out bits
-        if (~i_scl) begin
-            
-        end
-    end
+    localparam TEMP_VALUE_MSB_REGISTER = 8'h00;
+    localparam TEMP_VALUE_LSB_REGISTER = 8'h01;
 
-    always_ff @(posedge CLK100MHZ or posedge rst_p) begin       // Sampling bits 
+    localparam SLAVE_ADDRESS = 7'h4B;
+    localparam READ = 1'b1;
+    localparam WRITE = 1'b0;
+
+    typedef enum logic [3:0] { 
+    IDLE,
+    START,
+    WAIT_FOR_ACK,
+    BIT5,
+    BIT4,
+    BIT3,
+    BIT2,
+    BIT1,
+    BIT0,
+    ERROR,
+    } e_state;
+
+    e_state state;
+    logic [2:0] internal_counter;
+
+    always_ff @(posedge CLK100MHZ or posedge rst_p) begin
         if (rst_p) begin
-            state <= IDLE;
+            internal_counter <= 0;
+            o_stop_flag <= 0;
         end else begin
-        case (state)
-            IDLE: begin
-                SCL <= 1;
-                SDA <= 1;
-                r_data_count <= 0;
-                if (data_begin) begin
-                    SDA <= 0;
-                    state <= STATE2;
+            case (state)
+                IDLE: begin 
+                    o_tx_begin <= 0;
+                    o_stop_flag <= 0;
+                    if (SW[0] == 1) begin
+                        o_tx_begin <= 1;
+                        state <= START;
+                    end
                 end
-            end
 
-            STATE2: begin
-                SCL <= 0;
-                o_enable_count <= 1;
-            end
-
-            STATE3: begin
-                if (i_tick && SCL == 0) begin
-                    SDA <= data[r_data_count];  //Command we are sending OUT
-                    r_data_count <= r_data_count + 1;
+                START: begin 
+                    o_tx_begin <= 0;
+                    if (~i_sda) begin
+                        if (internal_counter == 0) begin
+                            o_data <= {SLAVE_ADDRESS, WRITE};
+                            state <= WAIT_FOR_ACK;
+                        end else if (internal_counter == 1) begin
+                            o_data <= {CONFIG_REGISTER};
+                            state <= WAIT_FOR_ACK;
+                        end else if (internal_counter == 2) begin
+                            o_data <= {CONFIG_REGISTER_DATA};
+                            state <= WAIT_FOR_ACK;
+                        end else if (internal_counter == 3) begin
+                            state <= STOP;
+                            o_stop_flag <= 1;
+                            o_data <= 0;
+                        end
+                        
+                    end
                 end
-            end
 
+                WAIT_FOR_ACK: begin 
+                    if (i_ack_complete) begin
+                        state <= IDLE;
+                        internal_counter <= internal_counter + 1;
+                    end else if (i_tx_error) begin
+                        state <= ERROR;
+                    end
+                end
 
-
-            default : state <= IDLE;
-        endcase
+                ERROR: begin 
+                    o_tx_begin <= 0;
+                    o_data <= 1111_1111;
+                end
+            
+                default : state <= IDLE;
+            endcase
         end
     end
+
 
 endmodule
