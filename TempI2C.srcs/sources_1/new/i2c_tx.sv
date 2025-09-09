@@ -10,11 +10,13 @@ module i2c_tx(
     input logic tx_begin,
     input logic i_sda,
 
+    input logic i_stop_flag, // Comes from master mod
 
     output logic o_sda,
     output logic o_enable_count,
     output logic o_tx_error,
-    output logic o_ack_complete
+    output logic o_ack_complete,
+    output logic o_stop_complete
     );
 
     typedef enum logic [3:0] { 
@@ -28,7 +30,8 @@ module i2c_tx(
     BIT1,
     BIT0,
     RW,
-    ACK
+    ACK,
+    STOP
     } e_state;
 
     e_state state, nextstate;
@@ -45,8 +48,12 @@ module i2c_tx(
     always_comb begin
         nextstate = state;
         case (state)
-            IDLE: if (tx_begin)
+            IDLE: begin
+                if (tx_begin)
                     nextstate = START;
+                else if (i_scl_low_edge_detect && i_stop_flag)
+                    nextstate = STOP;
+            end
             START: if (i_scl)
                     nextstate = BIT6;
             BIT6: if (i_scl_low_edge_detect)
@@ -66,6 +73,8 @@ module i2c_tx(
             RW:   if (i_scl_low_edge_detect)
                     nextstate = ACK;
             ACK:  if (i_scl_low_edge_detect)
+                    nextstate = IDLE;
+            STOP: if (i_scl_low_edge_detect)
                     nextstate = IDLE;
 
             default: nextstate = IDLE;
@@ -106,6 +115,12 @@ module i2c_tx(
                         o_ack_complete <= 1;
                     else if ((state == ACK) && i_scl && i_sda)
                         o_tx_error <= 1; 
+                end
+                STOP: begin
+                    if (i_scl_rising_edge_detect && (state == STOP)) begin
+                        o_sda <= 1;
+                        o_stop_complete <= 1;
+                    end
                 end  
                 default : o_sda <= 1;
             endcase 

@@ -2,7 +2,7 @@ module i2c_rising_edge_detect(
     input logic CLK100MHZ,
     input logic rst_p,
     input logic i_enable,
-    input logic o_tick,
+    input logic i_tick,
     input logic i_scl,
 
     output logic o_scl_rising_edge_detect
@@ -19,7 +19,7 @@ module i2c_rising_edge_detect(
     always_ff @(posedge CLK100MHZ or posedge rst_p) begin
         if (rst_p || ~i_enable)
             phase <= 1'b1;       // idle high
-        else if (o_tick)
+        else if (i_tick)
             phase <= ~phase;
     end
     

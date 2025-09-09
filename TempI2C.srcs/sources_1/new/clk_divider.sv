@@ -9,14 +9,14 @@ module clk_divider #(
     output logic o_tick
     );
 
-    logic [$clog2(CLK_HALF_PERIOD):0] scl_counter;
+    (* mark_debug = "true" *) logic [$clog2(CLK_HALF_PERIOD):0] scl_counter;
 
     // Divider with counter
     always_ff @(posedge CLK100MHZ or posedge rst_p) begin
         if (rst_p || ~i_enable) begin
             o_tick        <= 0;
             scl_counter   <= 0;
-        end else begin
+        end else if (i_enable) begin
             if (scl_counter == CLK_HALF_PERIOD-1) begin
                 scl_counter   <= 0;
                 o_tick        <= 1;

@@ -2,25 +2,25 @@ module i2c_falling_edge_detect(
     input logic CLK100MHZ,
     input logic rst_p,
     input logic i_enable,
-    input logic o_tick,
+    input logic i_tick,
 
-    output logic o_scl,
+    output logic o_scl, // SCL bus
     output logic o_scl_low_edge_detect
     );
 
 
     typedef enum logic [1:0] { IDLE, LOW_EDGE_DETECT, SCL_LOW } state_t;
     
-    state_t state;
+    (* mark_debug = "true" *) state_t state;
     
-    logic phase;
+    (* mark_debug = "true" *) logic phase;
     logic oe_low;
     
     // Toggle phase each tick while enabled; idle released high when not enabled
     always_ff @(posedge CLK100MHZ or posedge rst_p) begin
         if (rst_p || ~i_enable)
             phase <= 1'b1;       // idle high
-        else if (o_tick)
+        else if (i_tick)
             phase <= ~phase;
     end
     
@@ -47,7 +47,7 @@ module i2c_falling_edge_detect(
             o_scl_low_edge_detect <= (state == LOW_EDGE_DETECT);
     end
 
-    // oe_low is when enable == 1 and SCL is low   
+    // oe_low is high when enable == 1 and SCL is low   
     // o_scl is SCL clock according to divider   
     assign oe_low   = (i_enable && ~phase);
     assign o_scl    = oe_low ? 1'b0 : 1'b1;
