@@ -6,7 +6,7 @@ module i2c_rx(
     input logic i_scl,
     input logic i_scl_rising_edge_detect,
 
-    input logic rx_begin,   //Comes from o_ack_complete from TX module
+    input logic i_rx_begin,   // Comes from rx_begin in the master module
     input logic i_sda,
 
     output logic [7:0] o_temp_data,
@@ -43,7 +43,7 @@ module i2c_rx(
     always_comb begin
         nextstate = state;
         case (state)
-            IDLE: if (rx_begin)
+            IDLE: if (i_rx_begin)
                     nextstate = BIT7;
             BIT7: if (i_scl_low_edge_detect)
                     nextstate = BIT6;

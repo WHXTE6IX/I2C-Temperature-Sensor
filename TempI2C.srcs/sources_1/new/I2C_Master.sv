@@ -16,7 +16,7 @@ module I2C_Master(
     output logic [7:0] o_data,
     output logic o_tx_begin,
     output logic o_stop_flag,
-    input  logic data_begin,
+    output logic i_rx_begin,
     
     input  logic i_enable_count // from tx mod
     );
@@ -50,7 +50,7 @@ module I2C_Master(
     always_ff @(posedge CLK100MHZ or posedge rst_p) begin
         if (rst_p) begin
             internal_counter <= 0;
-            o_stop_flag <= 0;
+            o_stop_flag <= 0;       
         end else begin
             case (state)
                 IDLE: begin 

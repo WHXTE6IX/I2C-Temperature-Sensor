@@ -32,7 +32,7 @@ module i2c_rising_edge_detect(
                 state <= RISING_EDGE_DETECT;
             end else if (state == RISING_EDGE_DETECT) begin
                 state <= SCL_HIGH;
-            end else if ((state == SCL_HIGH) && i_scl) begin
+            end else if ((state == SCL_HIGH) && ~i_scl) begin
                 state <= IDLE;
             end
         end

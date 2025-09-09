@@ -63,7 +63,7 @@ module top_i2c_temp_sensor(
         .o_data          (data),
         .o_tx_begin      (top_tx_begin),
         .o_stop_flag     (stop_flag),
-        .data_begin      (data_begin),
+        .i_rx_begin      (rx_begin),
         .i_enable_count  (enable_count)
     );
 
@@ -90,7 +90,7 @@ module top_i2c_temp_sensor(
         .i_scl_low_edge_detect    (scl_low_edge_detect),
         .i_scl                    (TMP_SCL),
         .i_scl_rising_edge_detect (scl_rising_edge_detect),
-        .rx_begin                 (data_begin),
+        .i_rx_begin               (rx_begin),
         .i_sda                    (TMP_SDA),
         .o_temp_data              (temp_data),
         .o_sda                    (rx_o_sda),   // use internal net

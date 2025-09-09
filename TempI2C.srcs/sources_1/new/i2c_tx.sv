@@ -7,7 +7,7 @@ module i2c_tx(
     input logic i_scl_rising_edge_detect,
 
     input logic [7:0] i_data_command,
-    input logic tx_begin,
+    input logic i_tx_begin,
     input logic i_sda,
 
     input logic i_stop_flag, // Comes from master mod
@@ -49,12 +49,12 @@ module i2c_tx(
         nextstate = state;
         case (state)
             IDLE: begin
-                if (tx_begin)
+                if (i_tx_begin)
                     nextstate = START;
                 else if (i_scl_low_edge_detect && i_stop_flag)
                     nextstate = STOP;
             end
-            START: if (i_scl)
+            START: if (i_scl_rising_edge_detect)
                     nextstate = BIT6;
             BIT6: if (i_scl_low_edge_detect)
                     nextstate = BIT5;
