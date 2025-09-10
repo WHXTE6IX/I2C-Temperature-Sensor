@@ -6,16 +6,16 @@ module i2c_tx(
     input logic i_scl,
     input logic i_scl_rising_edge_detect,
 
-    input logic [7:0] i_data_command,
+    (* mark_debug = "true", keep = "true" *) input logic [7:0] i_data_command,
     input logic i_tx_begin,
     input logic i_sda,
 
     input logic i_stop_flag, // Comes from master mod
 
-    output logic o_sda,
+    (* mark_debug = "true", keep = "true" *) output logic o_sda,
     output logic o_enable_count,
     output logic o_tx_error,
-    output logic o_ack_complete,
+    (* mark_debug = "true", keep = "true" *) output logic o_ack_complete,
     output logic o_stop_complete
     );
 
@@ -34,7 +34,8 @@ module i2c_tx(
     STOP
     } e_state;
 
-    e_state state, nextstate;
+    (* mark_debug = "true", keep = "true" *) e_state state;
+    e_state nextstate;
     
 
     always_ff @(posedge CLK100MHZ or posedge rst_p) begin
@@ -54,7 +55,7 @@ module i2c_tx(
                 else if (i_scl_low_edge_detect && i_stop_flag)
                     nextstate = STOP;
             end
-            START: if (i_scl_rising_edge_detect)
+            START: if (i_scl_low_edge_detect)
                     nextstate = BIT6;
             BIT6: if (i_scl_low_edge_detect)
                     nextstate = BIT5;
@@ -90,12 +91,12 @@ module i2c_tx(
         end else begin
             o_ack_complete  <= 0;
             o_tx_error      <= 0;
-            o_enable_count  <= 0;
             case (state)
                 IDLE: begin
                     o_sda           <= 1;
                     o_ack_complete  <= 0;
                     o_tx_error      <= 0;
+                    o_stop_complete <= 0;
                 end
                 START: begin
                     o_sda <= 0;
@@ -120,6 +121,7 @@ module i2c_tx(
                     if (i_scl_rising_edge_detect && (state == STOP)) begin
                         o_sda <= 1;
                         o_stop_complete <= 1;
+                        o_enable_count <= 0;
                     end
                 end  
                 default : o_sda <= 1;

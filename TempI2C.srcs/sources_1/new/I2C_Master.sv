@@ -2,7 +2,6 @@
 module I2C_Master(
     input logic rst_p,
     input logic CLK100MHZ,
-    (* mark_debug = "true" *) input logic i_fpga_switch,
 
     input logic i_sda,
     input logic i_scl,
@@ -13,12 +12,10 @@ module I2C_Master(
     input logic i_stop_complete,
 
 
-    output logic [7:0] o_data,
-    output logic o_tx_begin,
+    (* mark_debug = "true", keep = "true" *) output logic [7:0] o_data,
+    (* mark_debug = "true", keep = "true" *) output logic o_tx_begin,
     output logic o_stop_flag,
-    output logic i_rx_begin,
-    
-    input  logic i_enable_count // from tx mod
+    output logic i_rx_begin
     );
 
     localparam CONFIG_REGISTER = 8'h03;
@@ -35,35 +32,27 @@ module I2C_Master(
     IDLE,
     START,
     WAIT_FOR_ACK,
-    BIT5,
-    BIT4,
-    BIT3,
-    BIT2,
-    BIT1,
     ERROR,
     STOP
     } e_state;
 
-    e_state state;
-    logic [2:0] internal_counter;
+    (* mark_debug = "true", keep = "true" *) e_state state;
+    (* mark_debug = "true", keep = "true" *) logic [2:0] internal_counter;
 
     always_ff @(posedge CLK100MHZ or posedge rst_p) begin
         if (rst_p) begin
             internal_counter <= 0;
-            o_stop_flag <= 0;       
+            o_stop_flag <= 0;
+            state <= IDLE;       
         end else begin
             case (state)
                 IDLE: begin 
-                    o_tx_begin <= 0;
-                    o_stop_flag <= 0;
-                    if (i_fpga_switch) begin
-                        o_tx_begin <= 1;
-                        state <= START;
-                    end
+                    o_tx_begin <= 1;
+                    state <= START;
                 end
 
-                START: begin 
-                    o_tx_begin <= 0;
+                START: begin
+                    o_tx_begin <= 0; 
                     if (~i_sda) begin
                         if (internal_counter == 0) begin
                             o_data <= {SLAVE_ADDRESS, WRITE};
@@ -93,7 +82,7 @@ module I2C_Master(
 
                 ERROR: begin 
                     o_tx_begin <= 0;
-                    o_data <= 1111_1111;
+                    o_data <= 8'b1111_1101;
                 end
 
                 STOP: begin
