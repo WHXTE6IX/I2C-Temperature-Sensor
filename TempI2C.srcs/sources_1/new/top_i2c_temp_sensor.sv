@@ -1,6 +1,6 @@
 module top_i2c_temp_sensor(
     input  logic       CLK100MHZ,
-    (* mark_debug = "true", keep = "true" *) inout  logic       TMP_SDA,
+    inout  logic       TMP_SDA,
     input  logic [1:0] SW,
     (* mark_debug = "true", keep = "true" *) output logic       TMP_SCL
 );
@@ -19,6 +19,7 @@ module top_i2c_temp_sensor(
     logic stop_flag;
     logic data_begin;
     logic [7:0] temp_data;
+    logic repeat_start;
 
     // NEW internal nets for SDA drive
     logic tx_o_sda;
@@ -63,24 +64,27 @@ module top_i2c_temp_sensor(
         .o_data          (data),
         .o_tx_begin      (top_tx_begin),
         .o_stop_flag     (stop_flag),
-        .i_rx_begin      (rx_begin)
+        .o_rx_begin      (rx_begin),
+        .i_scl_low_edge_detect (scl_low_edge_detect),
+        .o_initiate_repeated_start (repeat_start)
     );
 
     (* keep_hierarchy = "yes" *) i2c_tx inst_i2c_tx (
-        .rst_p                    (SW[0]),
-        .CLK100MHZ                (CLK100MHZ),
-        .i_scl_low_edge_detect    (scl_low_edge_detect),
-        .i_scl                    (TMP_SCL),
-        .i_scl_rising_edge_detect (scl_rising_edge_detect),
-        .i_data_command           (data),
-        .i_tx_begin               (top_tx_begin),
-        .i_sda                    (TMP_SDA),
-        .i_stop_flag              (stop_flag),
-        .o_sda                    (tx_o_sda),   // use internal net
-        .o_enable_count           (enable_count),
-        .o_tx_error               (tx_error),
-        .o_ack_complete           (ack_complete),
-        .o_stop_complete          (stop_complete)
+        .rst_p                     (SW[0]),
+        .CLK100MHZ                 (CLK100MHZ),
+        .i_scl_low_edge_detect     (scl_low_edge_detect),
+        .i_scl                     (TMP_SCL),
+        .i_scl_rising_edge_detect  (scl_rising_edge_detect),
+        .i_data_command            (data),
+        .i_tx_begin                (top_tx_begin),
+        .i_sda                     (TMP_SDA),
+        .i_stop_flag               (stop_flag),
+        .o_sda                     (tx_o_sda),   // use internal net
+        .o_enable_count            (enable_count),
+        .o_tx_error                (tx_error),
+        .o_ack_complete            (ack_complete),
+        .o_stop_complete           (stop_complete),
+        .i_initiate_repeated_start (repeat_start)
     );
 
     (* keep_hierarchy = "yes" *) i2c_rx inst_i2c_rx (

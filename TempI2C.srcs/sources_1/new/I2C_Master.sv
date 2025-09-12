@@ -10,12 +10,14 @@ module I2C_Master(
     input logic i_tx_error, //from tx mod
     input logic i_ack_complete, // from tx module
     input logic i_stop_complete,
+    input logic i_scl_low_edge_detect,
 
 
     (* mark_debug = "true", keep = "true" *) output logic [7:0] o_data,
     (* mark_debug = "true", keep = "true" *) output logic o_tx_begin,
-    output logic o_stop_flag,
-    output logic i_rx_begin
+    (* mark_debug = "true", keep = "true" *) output logic o_stop_flag,
+    output logic o_initiate_repeated_start,
+    output logic o_rx_begin
     );
 
     localparam CONFIG_REGISTER = 8'h03;
@@ -28,12 +30,17 @@ module I2C_Master(
     localparam READ = 1'b1;
     localparam WRITE = 1'b0;
 
+    logic [5:0] stop_counter;
+
     typedef enum logic [3:0] { 
     IDLE,
     START,
     WAIT_FOR_ACK,
+    ACK_HOLD,
     ERROR,
-    STOP
+    STOP,
+    READ_TEMP_START,
+    REPEATED_START
     } e_state;
 
     (* mark_debug = "true", keep = "true" *) e_state state;
@@ -54,18 +61,27 @@ module I2C_Master(
                 START: begin
                     o_tx_begin <= 0; 
                     if (~i_sda) begin
-                        if (internal_counter == 0) begin
+                        if (internal_counter == 0) begin         // Time to start setup data initialization 
                             o_data <= {SLAVE_ADDRESS, WRITE};
-                            state <= WAIT_FOR_ACK;
+                            state  <= WAIT_FOR_ACK;
                         end else if (internal_counter == 1) begin
                             o_data <= {CONFIG_REGISTER};
-                            state <= WAIT_FOR_ACK;
+                            state  <= WAIT_FOR_ACK;
                         end else if (internal_counter == 2) begin
                             o_data <= {CONFIG_REGISTER_DATA};
-                            state <= WAIT_FOR_ACK;
+                            state  <= WAIT_FOR_ACK;
                         end else if (internal_counter == 3) begin
-                            state <= STOP;
+                            state  <= STOP;
                             o_data <= 0;
+                        end else if (internal_counter == 4) begin   // Time to start data gathering sequence 
+                            o_data <= {SLAVE_ADDRESS, WRITE};
+                            state  <= WAIT_FOR_ACK;
+                        end else if (internal_counter == 5) begin
+                            o_data <= {TEMP_VALUE_MSB_REGISTER};
+                            state  <= WAIT_FOR_ACK;
+                        end else if (internal_counter == 6) begin
+                            state <= REPEATED_START;
+                            o_initiate_repeated_start <= 1;
                         end
                         
                     end
@@ -73,10 +89,16 @@ module I2C_Master(
 
                 WAIT_FOR_ACK: begin 
                     if (i_ack_complete) begin
-                        state <= IDLE;
+                        state <= ACK_HOLD;
                         internal_counter <= internal_counter + 1;
                     end else if (i_tx_error) begin
                         state <= ERROR;
+                    end
+                end
+
+                ACK_HOLD: begin
+                    if (i_scl_low_edge_detect) begin
+                        state <= START;
                     end
                 end
 
@@ -89,8 +111,23 @@ module I2C_Master(
                     o_stop_flag <= 1;
                     if (i_stop_complete) begin
                         o_stop_flag <= 0;
-                        state <= IDLE;
+                        state <= READ_TEMP_START;
+                        stop_counter <= 0;
                     end
+                end
+
+                READ_TEMP_START: begin 
+                    o_initiate_repeated_start <= 0;
+                    stop_counter <= stop_counter + 1;
+                    if (stop_counter > 60) begin
+                        o_tx_begin <= 1;
+                        internal_counter <= internal_counter + 1;
+                        state <= START;
+                    end
+                end
+
+                REPEATED_START : begin 
+
                 end
             
                 default : state <= IDLE;

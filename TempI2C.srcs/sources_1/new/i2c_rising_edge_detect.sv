@@ -5,7 +5,7 @@ module i2c_rising_edge_detect(
     input logic i_tick,
     input logic i_scl,
 
-    output logic o_scl_rising_edge_detect
+    (* mark_debug = "true", keep = "true" *) output logic o_scl_rising_edge_detect
     );
 
 
