@@ -11,6 +11,7 @@ module I2C_Master(
     input logic i_ack_complete, // from tx module
     input logic i_stop_complete,
     input logic i_scl_low_edge_detect,
+    input logic i_rep_start_complete,
 
 
     (* mark_debug = "true", keep = "true" *) output logic [7:0] o_data,
@@ -82,6 +83,9 @@ module I2C_Master(
                         end else if (internal_counter == 6) begin
                             state <= REPEATED_START;
                             o_initiate_repeated_start <= 1;
+                        end else if (internal_counter == 7) begin
+                            o_data <= {SLAVE_ADDRESS, READ};
+                            state <= WAIT_FOR_ACK;
                         end
                         
                     end
@@ -127,7 +131,9 @@ module I2C_Master(
                 end
 
                 REPEATED_START : begin 
-
+                    if (i_rep_start_complete)
+                        state <= START;
+                        internal_counter <= internal_counter + 1;
                 end
             
                 default : state <= IDLE;

@@ -20,6 +20,8 @@ module i2c_tx(
     output logic o_stop_complete
     );
 
+    localparam HOLDTIME = 60;
+
     typedef enum logic [3:0] { 
     IDLE,
     START,
@@ -38,7 +40,8 @@ module i2c_tx(
 
     (* mark_debug = "true", keep = "true" *) e_state state;
     e_state nextstate;
-    logic repeated_start_success;
+    logic r_repeated_start_success;
+    logic [5:0] rep_start_counter;
     
 
     always_ff @(posedge CLK100MHZ or posedge rst_p) begin
@@ -88,7 +91,7 @@ module i2c_tx(
             end
             STOP: if (o_stop_complete)
                     nextstate = IDLE;
-            REPEATED_START: if (repeated_start_success)
+            REPEATED_START: if (r_repeated_start_success)
                 nextstate = BIT6;
             default: nextstate = IDLE;
         endcase    
@@ -96,10 +99,10 @@ module i2c_tx(
 
     always_ff @(posedge CLK100MHZ or posedge rst_p) begin
         if (rst_p) begin
-            o_sda           <= 1;
-            o_ack_complete  <= 0;
-            o_tx_error      <= 0;
-            o_enable_count  <= 0;
+            o_sda             <= 1;
+            o_ack_complete    <= 0;
+            o_tx_error        <= 0;
+            o_enable_count    <= 0;
         end else begin
             o_ack_complete  <= 0;
             o_tx_error      <= 0;
@@ -109,7 +112,8 @@ module i2c_tx(
                     o_ack_complete  <= 0;
                     o_tx_error      <= 0;
                     o_stop_complete <= 0;
-                    repeated_start_success <= 0;
+                    r_repeated_start_success <= 0;
+                    rep_start_counter <= 0;
                 end
                 START: begin
                     o_sda <= 0;
@@ -137,12 +141,21 @@ module i2c_tx(
                         o_enable_count <= 0;
                     end
                 end
-                REPEATED_START: begin 
-                    if (i_scl && i_sda) begin
-                        // HOLD IT FORA CERTAIN AMOUNT OFG TIME?? 
-                    end
-                        o_sda <= 0;
-                            repeated_start_success <= 1;
+                REPEATED_START: begin
+                    if (i_scl) begin
+                        // SDA high for setup time
+                        if (rep_start_counter < HOLDTIME) begin
+                            o_sda <= 1;
+                            rep_start_counter <= rep_start_counter + 1;
+                        end 
+                        // SDA low for hold time
+                        else if (rep_start_counter < (HOLDTIME*2)) begin
+                            o_sda <= 0;
+                            rep_start_counter <= rep_start_counter + 1;
+                        end 
+                        else begin
+                            r_repeated_start_success <= 1;
+                            rep_start_counter <= 0;
                         end
                     end
                 end  
