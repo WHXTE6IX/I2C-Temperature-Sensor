@@ -105,16 +105,16 @@ module top_i2c_temp_sensor(
         .o_byte_complete          (byte_complete)
     );
 
-    // (* keep_hierarchy = "yes" *) seven_seg_display #(
-        // .CLKDIVIDER(100_000)
-    // ) inst_seven_seg_display (
-        // .CLK100MHZ   (CLK100MHZ),
-        // .rst_p       (SW[0]),
-        // .i_temp_data (temp_data),
-        // .i_tx_error  (tx_error),
-        // .AN          (AN),
-        // .sevenSeg   (sevenSeg)
-    // );
+    (* keep_hierarchy = "yes" *) seven_seg_display #(
+        .CLKDIVIDER(100_000)
+    ) inst_seven_seg_display (
+        .CLK100MHZ   (CLK100MHZ),
+        .rst_p       (SW[0]),
+        .i_temp_data (temp_data),
+        .i_tx_error  (tx_error),
+        .AN          (AN),
+        .sevenSeg   (sevenSeg)
+    );
 
 
     assign TMP_SDA = (tx_o_sda == 1'b0 || rx_o_sda == 1'b0) ? 1'b0 : 1'bz;

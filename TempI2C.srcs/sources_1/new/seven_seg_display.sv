@@ -50,20 +50,20 @@ module seven_seg_display #(
     always_comb begin
         case (r_digit_sel)
             0: begin
-                Anode = 8'b0111_1111;
+                AN = 8'b0111_1111;
                 sevenSeg = digit_to_7seg(temp_thousands); // MSB bit
             end
             1: begin
-                Anode = 8'b1011_1111;
+                AN = 8'b1011_1111;
                 sevenSeg = digit_to_7seg(temp_hundreds); // Plus 1 for decimal point
                 sevenSeg[7] = 0;
             end
             2: begin 
-                Anode = 8'b1101_1111;
+                AN = 8'b1101_1111;
                 sevenSeg = digit_to_7seg(temp_tens); 
             end
             3: begin 
-                Anode = 8'b1110_1111;
+                AN = 8'b1110_1111;
                 sevenSeg = digit_to_7seg(temp_ones); // LSB bit
             end
         endcase
@@ -71,17 +71,17 @@ module seven_seg_display #(
 
     function [7:0] digit_to_7seg(input [3:0] digit_spot);
         case (digit_spot)
-            0: digit_to_7seg = 8'b1000_0000;
-            1: digit_to_7seg = 8'b1111_0010;
-            2: digit_to_7seg = 8'b0100_1000;
-            3: digit_to_7seg = 8'b0110_0000;
-            4: digit_to_7seg = 8'b0011_0010;
-            5: digit_to_7seg = 8'b0010_0100;
-            6: digit_to_7seg = 8'b0000_0100;
-            7: digit_to_7seg = 8'b1111_0000;
-            8: digit_to_7seg = 8'b0000_0000;
-            9: digit_to_7seg = 8'b0010_0000;
-            default: digit_to_7seg = 8'b11111110; // Blank
+            0: digit_to_7seg = 8'b1100_0000;          
+            1: digit_to_7seg = 8'b1111_1001;    //
+            2: digit_to_7seg = 8'b1010_0100;    
+            3: digit_to_7seg = 8'b1011_0000;    //
+            4: digit_to_7seg = 8'b1001_1001;    //
+            5: digit_to_7seg = 8'b1001_0010;    //
+            6: digit_to_7seg = 8'b1000_0010;    //
+            7: digit_to_7seg = 8'b1111_1000;    
+            8: digit_to_7seg = 8'b1000_0000;    //
+            9: digit_to_7seg = 8'b1001_1000;    //
+            default: digit_to_7seg = 8'b1111_1111; // Blank
         endcase
     endfunction
 
