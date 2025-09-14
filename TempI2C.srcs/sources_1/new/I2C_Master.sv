@@ -4,20 +4,19 @@ module I2C_Master(
     input logic CLK100MHZ,
 
     input logic i_sda,
-    input logic i_scl,
-      
-    input logic i_byte_complete,      // from rx mod
-    input logic i_ack_complete,       // from tx module
-    input logic i_stop_complete,      // from tx module
     input logic i_scl_low_edge_detect,
-    input logic i_repeated_start_complete, // from tx module
+      
+    input logic i_byte_complete,           // from RX module
+    input logic i_ack_complete,            // from tx module
+    input logic i_stop_complete,           // from tx module
+    input logic i_start_complete,          // from tx module
 
 
-    (* mark_debug = "true", keep = "true" *) output logic [7:0] o_data,
-    (* mark_debug = "true", keep = "true" *) output logic o_tx_begin,
-    (* mark_debug = "true", keep = "true" *) output logic o_stop_flag,
-    (* mark_debug = "true", keep = "true" *) output logic o_initiate_repeated_start,
-    (* mark_debug = "true", keep = "true" *) output logic o_rx_begin
+    output logic [7:0] o_data,    // Data command being sent to TX module
+    output logic o_tx_begin,
+    output logic o_stop_flag,
+    output logic o_initiate_repeated_start,
+    output logic o_rx_begin
     );
 
     localparam CONFIG_REGISTER = 8'h03;
@@ -43,8 +42,8 @@ module I2C_Master(
     RX_BEGIN                
     } e_state;
 
-    (* mark_debug = "true", keep = "true" *) e_state state;
-    (* mark_debug = "true", keep = "true" *) logic [3:0] internal_counter;
+    e_state state;
+    logic [3:0] internal_counter;
 
     always_ff @(posedge CLK100MHZ or posedge rst_p) begin
         if (rst_p) begin
@@ -130,7 +129,7 @@ module I2C_Master(
                 end
 
                 REPEATED_START : begin 
-                    if (i_repeated_start_complete) begin
+                    if (i_start_complete) begin
                         state <= START;
                         o_initiate_repeated_start <= 0;
                         internal_counter <= internal_counter + 1;

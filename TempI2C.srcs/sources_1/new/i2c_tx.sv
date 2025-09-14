@@ -5,21 +5,20 @@ module i2c_tx(
     input logic i_scl_low_edge_detect,
     input logic i_scl,
     input logic i_scl_rising_edge_detect,
+    input logic i_sda,
 
-    input logic [7:0] i_data_command,
-    input logic i_tx_begin,
-    input logic i_rx_begin,
-    input logic i_initiate_repeated_start,
-    (* mark_debug = "true", keep = "true" *) input logic i_sda,
+    input logic [7:0] i_data_command,      // Comes from i2c_master
+    input logic i_tx_begin,                // Comes from i2c_master
+    input logic i_rx_begin,                // Comes from i2c_master
+    input logic i_initiate_repeated_start, // Comes from i2c_master
+    input logic i_stop_flag,               // Comes from i2c_master
 
-    input logic i_stop_flag, // Comes from master mod
-
-    (* mark_debug = "true", keep = "true" *) output logic o_sda,
+    output logic o_sda,
     output logic o_enable_count,
     output logic o_tx_error,
-    (* mark_debug = "true", keep = "true" *) output logic o_ack_complete,
+    output logic o_ack_complete,
     output logic o_stop_complete,
-    (* mark_debug = "true", keep = "true" *) output logic o_start_complete
+    output logic o_start_complete
     );
 
     localparam HOLDTIME = 62;
@@ -40,9 +39,8 @@ module i2c_tx(
     REPEATED_START
     } e_state;
 
-    (* mark_debug = "true", keep = "true" *) e_state state;
-    e_state nextstate;
-    logic [6:0] rep_start_counter;     // 2 60 counts for 0.6us specification
+    e_state state, nextstate;
+    logic [6:0] r_start_counter;     // 2 60 counts for 0.6us specification
     
 
     always_ff @(posedge CLK100MHZ or posedge rst_p) begin
@@ -114,24 +112,26 @@ module i2c_tx(
                     o_ack_complete  <= 0;
                     o_tx_error      <= 0;
                     o_stop_complete <= 0;
-                    rep_start_counter <= 0;
+                    r_start_counter <= 0;
                 end
                 START: begin
                     if (i_scl) begin
-                        o_enable_count <= 1;
-                        if (rep_start_counter < HOLDTIME) begin
+                        o_enable_count <= 1;    // Start the SCL clock
+
+                        // SDA high for setup time
+                        if (r_start_counter < HOLDTIME) begin
                             o_sda <= 1;
-                            rep_start_counter <= rep_start_counter + 1;
+                            r_start_counter <= r_start_counter + 1;
                         end 
                         // SDA low for hold time
-                        else if (rep_start_counter < (HOLDTIME*2)) begin
+                        else if (r_start_counter < (HOLDTIME*2)) begin
                             o_sda <= 0;
-                            rep_start_counter <= rep_start_counter + 1;
+                            r_start_counter <= r_start_counter + 1;
                         end 
                         else begin
                             o_sda <= 1;
                             o_start_complete <= 1;
-                            rep_start_counter <= 0;
+                            r_start_counter <= 0;
                         end
                     end
                 end 
@@ -161,19 +161,19 @@ module i2c_tx(
                 REPEATED_START: begin
                     if (i_scl) begin
                         // SDA high for setup time
-                        if (rep_start_counter < HOLDTIME) begin
+                        if (r_start_counter < HOLDTIME) begin
                             o_sda <= 1;
-                            rep_start_counter <= rep_start_counter + 1;
+                            r_start_counter <= r_start_counter + 1;
                         end 
                         // SDA low for hold time
-                        else if (rep_start_counter < (HOLDTIME*2)) begin
+                        else if (r_start_counter < (HOLDTIME*2)) begin
                             o_sda <= 0;
-                            rep_start_counter <= rep_start_counter + 1;
+                            r_start_counter <= r_start_counter + 1;
                         end 
                         else begin
                             o_sda <= 1;
                             o_start_complete <= 1;
-                            rep_start_counter <= 0;
+                            r_start_counter <= 0;
                         end
                     end
                 end  

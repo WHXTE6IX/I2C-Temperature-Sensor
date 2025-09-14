@@ -4,14 +4,14 @@ module i2c_falling_edge_detect(
     input logic i_enable_count,
     input logic i_tick,
 
-    output logic o_scl,             // Master-Out SCL bus
-    (* mark_debug = "true", keep = "true" *) output logic o_scl_low_edge_detect
+    output logic o_scl,             // Used as Master-Out SCL bus
+    output logic o_scl_low_edge_detect
     );
 
 
     typedef enum logic [1:0] { IDLE, LOW_EDGE_DETECT, SCL_LOW } state_t;
     
-    (* mark_debug = "true", keep = "true" *) state_t state;
+    state_t state;
     
     logic phase;
     logic oe_low;
@@ -48,7 +48,6 @@ module i2c_falling_edge_detect(
     end
 
     // oe_low is high when enable == 1 and SCL is low
-    // o_internal_scl_bus is either 1 or 0 to represent SCL line between mods.
     // o_scl is SCL clock according to divider   
     assign oe_low             = (i_enable_count && ~phase);
     assign o_scl              = oe_low ? 1'b0 : 1'b1;

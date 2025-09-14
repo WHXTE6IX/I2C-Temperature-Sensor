@@ -1,6 +1,5 @@
 module tb_clk_divider;
 
-    // Clock + reset
     logic CLK100MHZ;
     logic rst_p;
     initial begin
@@ -27,9 +26,6 @@ module tb_clk_divider;
     // SDA line (shared between master + tx + "pull-up")
     logic sda_line;
 
-    // ----------------------------------------------------------------
-    // Instantiate clock divider
-    // ----------------------------------------------------------------
     clk_divider #(
         .CLK_HALF_PERIOD(143)   // ~350 kHz
     ) inst_clk_divider (
@@ -39,9 +35,6 @@ module tb_clk_divider;
         .o_tick         (o_tick)
     );
 
-    // ----------------------------------------------------------------
-    // Instantiate falling edge detect
-    // ----------------------------------------------------------------
     i2c_falling_edge_detect inst_i2c_falling_edge_detect (
         .CLK100MHZ              (CLK100MHZ),
         .rst_p                  (rst_p),
@@ -51,9 +44,6 @@ module tb_clk_divider;
         .o_scl_low_edge_detect  (o_scl_low_edge_detect)
     );
 
-    // ----------------------------------------------------------------
-    // Instantiate rising edge detect
-    // ----------------------------------------------------------------
     i2c_rising_edge_detect inst_i2c_rising_edge_detect (
         .CLK100MHZ                  (CLK100MHZ),
         .rst_p                      (rst_p),
@@ -63,9 +53,6 @@ module tb_clk_divider;
         .o_scl_rising_edge_detect   (o_scl_rising_edge_detect)
     );
 
-    // ----------------------------------------------------------------
-    // Instantiate I2C Master
-    // ----------------------------------------------------------------
     I2C_Master inst_master (
         .rst_p          (rst_p),
         .CLK100MHZ      (CLK100MHZ),
@@ -82,9 +69,6 @@ module tb_clk_divider;
         .i_rx_begin     (rx_begin)
     );
 
-    // ----------------------------------------------------------------
-    // Instantiate I2C TX
-    // ----------------------------------------------------------------
     i2c_tx inst_tx (
         .rst_p                  (rst_p),
         .CLK100MHZ              (CLK100MHZ),
@@ -102,9 +86,6 @@ module tb_clk_divider;
         .o_stop_complete        (stop_complete)
     );
 
-    // ----------------------------------------------------------------
-    // Stimulus
-    // ----------------------------------------------------------------
     initial begin
         rst_p = 1;
         i_enable_count = 0;
@@ -119,9 +100,6 @@ module tb_clk_divider;
         $finish;
     end
 
-    // ----------------------------------------------------------------
-    // Monitor
-    // ----------------------------------------------------------------
     initial begin
     $monitor("[%0t] TX.state=%0d scl=%0b sda=%0b tick=%0b fall=%0b rise=%0b tx_begin=%0b stop_flag=%0b ack=%0b err=%0b",
              $time,

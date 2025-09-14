@@ -5,15 +5,14 @@ module i2c_rx#(
     input logic CLK100MHZ,
 
     input logic i_scl_low_edge_detect,
-    input logic i_scl,
     input logic i_scl_rising_edge_detect,
 
     input logic i_rx_begin,   // Comes from rx_begin in the master module
-    (* mark_debug = "true", keep = "true" *) input logic i_sda,
+    input logic i_sda,
 
-    (* mark_debug = "true", keep = "true" *) output logic [15:0] o_temp_data,
-    (* mark_debug = "true", keep = "true" *) output logic o_sda,
-    (* mark_debug = "true", keep = "true" *) output logic o_byte_complete
+    output logic [15:0] o_temp_data,
+    output logic o_sda,
+    output logic o_byte_complete
     );
 
     typedef enum logic [4:0] { 
@@ -39,13 +38,12 @@ module i2c_rx#(
     DATADONE
     } e_state;
 
-    (* mark_debug = "true", keep = "true" *) logic [15:0] r_temp_data;
-    (* mark_debug = "true", keep = "true" *) logic [$clog2(MEASUREMENT_TIMER):0] r_measurement_timer;
-    (* mark_debug = "true", keep = "true" *) logic r_begin_again;
+    // 240 ms timer for sensor to regather data
+    logic [$clog2(MEASUREMENT_TIMER):0] r_measurement_timer;
+    logic [15:0] r_temp_data;
+    logic r_begin_again;
 
-    (* mark_debug = "true", keep = "true" *) e_state state;
-    e_state nextstate;
-    
+    e_state state, nextstate;    
 
     always_ff @(posedge CLK100MHZ or posedge rst_p) begin
         if(rst_p) begin
@@ -55,8 +53,6 @@ module i2c_rx#(
         end
     end
 
-
-    /////////////////////////////////////////////////////
     always_comb begin
         nextstate = state;
         case (state)
@@ -160,6 +156,7 @@ module i2c_rx#(
                     o_sda <= 1;
                 end
                 WAITPERIOD: begin
+                    // Begin 240 ms wait time
                     o_sda <= 1;
                     r_temp_data <= 0;
                     r_measurement_timer <= r_measurement_timer + 1;

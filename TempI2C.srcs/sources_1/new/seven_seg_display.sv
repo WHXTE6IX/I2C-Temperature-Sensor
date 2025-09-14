@@ -5,13 +5,12 @@ module seven_seg_display #(
     input logic rst_p,
 
     input logic [15:0] i_temp_data,
-    input logic i_tx_error,
 
     output logic [7:0] AN,
     output logic [7:0] sevenSeg
     );
 
-    logic [$clog2(CLKDIVIDER)-1:0] clk_counter;
+    logic [$clog2(CLKDIVIDER)-1:0] clk_counter;   // Counter for getting 1000Hz refresh rate
     logic [1:0] r_digit_sel;
 
     logic signed [15:0] data_before_math;
@@ -55,8 +54,8 @@ module seven_seg_display #(
             end
             1: begin
                 AN = 8'b1011_1111;
-                sevenSeg = digit_to_7seg(temp_hundreds); // Plus 1 for decimal point
-                sevenSeg[7] = 0;
+                sevenSeg = digit_to_7seg(temp_hundreds);
+                sevenSeg[7] = 0;    // For decimal point
             end
             2: begin 
                 AN = 8'b1101_1111;
@@ -71,16 +70,16 @@ module seven_seg_display #(
 
     function [7:0] digit_to_7seg(input [3:0] digit_spot);
         case (digit_spot)
-            0: digit_to_7seg = 8'b1100_0000;          
-            1: digit_to_7seg = 8'b1111_1001;    //
-            2: digit_to_7seg = 8'b1010_0100;    
-            3: digit_to_7seg = 8'b1011_0000;    //
-            4: digit_to_7seg = 8'b1001_1001;    //
-            5: digit_to_7seg = 8'b1001_0010;    //
-            6: digit_to_7seg = 8'b1000_0010;    //
-            7: digit_to_7seg = 8'b1111_1000;    
-            8: digit_to_7seg = 8'b1000_0000;    //
-            9: digit_to_7seg = 8'b1001_1000;    //
+            0: digit_to_7seg = 8'b1100_0000;
+            1: digit_to_7seg = 8'b1111_1001;
+            2: digit_to_7seg = 8'b1010_0100;
+            3: digit_to_7seg = 8'b1011_0000;
+            4: digit_to_7seg = 8'b1001_1001;
+            5: digit_to_7seg = 8'b1001_0010;
+            6: digit_to_7seg = 8'b1000_0010;
+            7: digit_to_7seg = 8'b1111_1000;
+            8: digit_to_7seg = 8'b1000_0000;
+            9: digit_to_7seg = 8'b1001_1000;
             default: digit_to_7seg = 8'b1111_1111; // Blank
         endcase
     endfunction
