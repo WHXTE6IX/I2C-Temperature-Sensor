@@ -1,8 +1,10 @@
 module top_i2c_temp_sensor(
     input  logic       CLK100MHZ,
     inout  logic       TMP_SDA,
-    input  logic [1:0] SW,
-    (* mark_debug = "true", keep = "true" *) output logic       TMP_SCL
+    input  logic [0:0] SW,
+    (* mark_debug = "true", keep = "true" *) output logic       TMP_SCL,
+    output logic [7:0] AN,
+    output logic [7:0] sevenSeg
 );
 
     logic enable_count;
@@ -17,11 +19,10 @@ module top_i2c_temp_sensor(
     logic [7:0] data;
     logic top_tx_begin;
     logic stop_flag;
-    logic data_begin;
-    logic [7:0] temp_data;
+    logic [15:0] temp_data;
     logic repeat_start;
+    logic repeat_start_complete;
 
-    // NEW internal nets for SDA drive
     logic tx_o_sda;
     logic rx_o_sda;
 
@@ -58,7 +59,6 @@ module top_i2c_temp_sensor(
         .i_sda           (TMP_SDA),
         .i_scl           (TMP_SCL),
         .i_byte_complete (byte_complete),
-        .i_tx_error      (tx_error),
         .i_ack_complete  (ack_complete),
         .i_stop_complete (stop_complete),
         .o_data          (data),
@@ -66,7 +66,8 @@ module top_i2c_temp_sensor(
         .o_stop_flag     (stop_flag),
         .o_rx_begin      (rx_begin),
         .i_scl_low_edge_detect (scl_low_edge_detect),
-        .o_initiate_repeated_start (repeat_start)
+        .o_initiate_repeated_start (repeat_start),
+        .i_repeated_start_complete (repeat_start_complete)
     );
 
     (* keep_hierarchy = "yes" *) i2c_tx inst_i2c_tx (
@@ -84,10 +85,14 @@ module top_i2c_temp_sensor(
         .o_tx_error                (tx_error),
         .o_ack_complete            (ack_complete),
         .o_stop_complete           (stop_complete),
-        .i_initiate_repeated_start (repeat_start)
+        .i_initiate_repeated_start (repeat_start),
+        .o_start_complete          (repeat_start_complete),
+        .i_rx_begin                (rx_begin)
     );
 
-    (* keep_hierarchy = "yes" *) i2c_rx inst_i2c_rx (
+    (* keep_hierarchy = "yes" *) i2c_rx #(
+        .MEASUREMENT_TIMER(24_000_000)
+    ) inst_i2c_rx (
         .rst_p                    (SW[0]),
         .CLK100MHZ                (CLK100MHZ),
         .i_scl_low_edge_detect    (scl_low_edge_detect),
@@ -99,6 +104,18 @@ module top_i2c_temp_sensor(
         .o_sda                    (rx_o_sda),   // use internal net
         .o_byte_complete          (byte_complete)
     );
+
+    // (* keep_hierarchy = "yes" *) seven_seg_display #(
+        // .CLKDIVIDER(100_000)
+    // ) inst_seven_seg_display (
+        // .CLK100MHZ   (CLK100MHZ),
+        // .rst_p       (SW[0]),
+        // .i_temp_data (temp_data),
+        // .i_tx_error  (tx_error),
+        // .AN          (AN),
+        // .sevenSeg   (sevenSeg)
+    // );
+
 
     assign TMP_SDA = (tx_o_sda == 1'b0 || rx_o_sda == 1'b0) ? 1'b0 : 1'bz;
 

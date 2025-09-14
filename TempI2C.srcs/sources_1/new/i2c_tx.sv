@@ -6,8 +6,9 @@ module i2c_tx(
     input logic i_scl,
     input logic i_scl_rising_edge_detect,
 
-    (* mark_debug = "true", keep = "true" *) input logic [7:0] i_data_command,
+    input logic [7:0] i_data_command,
     input logic i_tx_begin,
+    input logic i_rx_begin,
     input logic i_initiate_repeated_start,
     (* mark_debug = "true", keep = "true" *) input logic i_sda,
 
@@ -17,10 +18,11 @@ module i2c_tx(
     output logic o_enable_count,
     output logic o_tx_error,
     (* mark_debug = "true", keep = "true" *) output logic o_ack_complete,
-    output logic o_stop_complete
+    output logic o_stop_complete,
+    (* mark_debug = "true", keep = "true" *) output logic o_start_complete
     );
 
-    localparam HOLDTIME = 60;
+    localparam HOLDTIME = 62;
 
     typedef enum logic [3:0] { 
     IDLE,
@@ -40,8 +42,7 @@ module i2c_tx(
 
     (* mark_debug = "true", keep = "true" *) e_state state;
     e_state nextstate;
-    logic r_repeated_start_success;
-    logic [5:0] rep_start_counter;
+    logic [6:0] rep_start_counter;     // 2 60 counts for 0.6us specification
     
 
     always_ff @(posedge CLK100MHZ or posedge rst_p) begin
@@ -58,14 +59,18 @@ module i2c_tx(
             IDLE: begin
                 if (i_tx_begin)
                     nextstate = START;
-                else if (i_scl_low_edge_detect && i_stop_flag)
+                else if (i_scl_low_edge_detect && i_stop_flag && ~i_rx_begin)
                     nextstate = STOP;
             end
-            START: if (i_scl_low_edge_detect)
+            START: if (o_start_complete && i_scl_low_edge_detect)
                     nextstate = BIT6;
             BIT6:begin 
                 if (i_stop_flag)
                     nextstate = STOP;
+                else if (i_initiate_repeated_start)
+                    nextstate = REPEATED_START;
+                else if (i_rx_begin)
+                    nextstate = IDLE;
                 else if (i_scl_low_edge_detect)
                     nextstate = BIT5;
             end
@@ -83,15 +88,11 @@ module i2c_tx(
                     nextstate = RW;
             RW:   if (i_scl_low_edge_detect)
                     nextstate = ACK;
-            ACK: begin 
-                if (i_scl_low_edge_detect)
+            ACK:  if (i_scl_low_edge_detect)
                     nextstate = BIT6;
-                else if (i_initiate_repeated_start)
-                    nextstate = REPEATED_START;
-            end
             STOP: if (o_stop_complete)
                     nextstate = IDLE;
-            REPEATED_START: if (r_repeated_start_success)
+            REPEATED_START: if (o_start_complete && i_scl_low_edge_detect)
                 nextstate = BIT6;
             default: nextstate = IDLE;
         endcase    
@@ -104,20 +105,35 @@ module i2c_tx(
             o_tx_error        <= 0;
             o_enable_count    <= 0;
         end else begin
-            o_ack_complete  <= 0;
-            o_tx_error      <= 0;
+            o_ack_complete         <= 0;
+            o_tx_error             <= 0;
+            o_stop_complete        <= 0;
             case (state)
                 IDLE: begin
                     o_sda           <= 1;
                     o_ack_complete  <= 0;
                     o_tx_error      <= 0;
                     o_stop_complete <= 0;
-                    r_repeated_start_success <= 0;
                     rep_start_counter <= 0;
                 end
                 START: begin
-                    o_sda <= 0;
-                    o_enable_count <= 1;
+                    if (i_scl) begin
+                        o_enable_count <= 1;
+                        if (rep_start_counter < HOLDTIME) begin
+                            o_sda <= 1;
+                            rep_start_counter <= rep_start_counter + 1;
+                        end 
+                        // SDA low for hold time
+                        else if (rep_start_counter < (HOLDTIME*2)) begin
+                            o_sda <= 0;
+                            rep_start_counter <= rep_start_counter + 1;
+                        end 
+                        else begin
+                            o_sda <= 1;
+                            o_start_complete <= 1;
+                            rep_start_counter <= 0;
+                        end
+                    end
                 end 
                 BIT6:   o_sda <= i_data_command[7]; 
                 BIT5:   o_sda <= i_data_command[6]; 
@@ -129,6 +145,7 @@ module i2c_tx(
                 RW:     o_sda <= i_data_command[0]; 
                 ACK: begin
                     o_sda <= 1; // Release SDA and wait for ack
+                    o_start_complete <= 0;
                     if ((state == ACK) && i_scl_rising_edge_detect && ~i_sda)
                         o_ack_complete <= 1;
                     else if ((state == ACK) && i_scl_rising_edge_detect && i_sda)
@@ -154,7 +171,8 @@ module i2c_tx(
                             rep_start_counter <= rep_start_counter + 1;
                         end 
                         else begin
-                            r_repeated_start_success <= 1;
+                            o_sda <= 1;
+                            o_start_complete <= 1;
                             rep_start_counter <= 0;
                         end
                     end

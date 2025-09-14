@@ -9,7 +9,7 @@ module clk_divider #(
     output logic o_tick
     );
 
-    (* mark_debug = "true", keep = "true" *) logic [$clog2(CLK_HALF_PERIOD)-1:0] scl_counter;
+    logic [$clog2(CLK_HALF_PERIOD)-1:0] scl_counter;
 
     // Divider with counter
     always_ff @(posedge CLK100MHZ or posedge rst_p) begin

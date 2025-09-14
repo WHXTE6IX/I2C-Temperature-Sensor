@@ -5,20 +5,19 @@ module I2C_Master(
 
     input logic i_sda,
     input logic i_scl,
-
-    input logic i_byte_complete, // from rx mod
-    input logic i_tx_error, //from tx mod
-    input logic i_ack_complete, // from tx module
-    input logic i_stop_complete,
+      
+    input logic i_byte_complete,      // from rx mod
+    input logic i_ack_complete,       // from tx module
+    input logic i_stop_complete,      // from tx module
     input logic i_scl_low_edge_detect,
-    input logic i_rep_start_complete,
+    input logic i_repeated_start_complete, // from tx module
 
 
     (* mark_debug = "true", keep = "true" *) output logic [7:0] o_data,
     (* mark_debug = "true", keep = "true" *) output logic o_tx_begin,
     (* mark_debug = "true", keep = "true" *) output logic o_stop_flag,
-    output logic o_initiate_repeated_start,
-    output logic o_rx_begin
+    (* mark_debug = "true", keep = "true" *) output logic o_initiate_repeated_start,
+    (* mark_debug = "true", keep = "true" *) output logic o_rx_begin
     );
 
     localparam CONFIG_REGISTER = 8'h03;
@@ -31,27 +30,29 @@ module I2C_Master(
     localparam READ = 1'b1;
     localparam WRITE = 1'b0;
 
-    logic [5:0] stop_counter;
+    logic [5:0] stop_counter;   // 60 count for 0.6us specification
 
     typedef enum logic [3:0] { 
-    IDLE,
-    START,
-    WAIT_FOR_ACK,
-    ACK_HOLD,
-    ERROR,
-    STOP,
-    READ_TEMP_START,
-    REPEATED_START
+    IDLE,                           
+    START,                
+    WAIT_FOR_ACK,                
+    ACK_HOLD,                
+    STOP,                
+    HOLD_STOP,                
+    REPEATED_START,                
+    RX_BEGIN                
     } e_state;
 
     (* mark_debug = "true", keep = "true" *) e_state state;
-    (* mark_debug = "true", keep = "true" *) logic [2:0] internal_counter;
+    (* mark_debug = "true", keep = "true" *) logic [3:0] internal_counter;
 
     always_ff @(posedge CLK100MHZ or posedge rst_p) begin
         if (rst_p) begin
             internal_counter <= 0;
             o_stop_flag <= 0;
-            state <= IDLE;       
+            state <= IDLE;
+            o_tx_begin <= 0;
+            o_rx_begin <= 0;       
         end else begin
             case (state)
                 IDLE: begin 
@@ -60,7 +61,10 @@ module I2C_Master(
                 end
 
                 START: begin
-                    o_tx_begin <= 0; 
+                    o_tx_begin  <= 0;
+                    o_rx_begin  <= 0;
+                    o_stop_flag <= 0;
+                    o_initiate_repeated_start <= 0;
                     if (~i_sda) begin
                         if (internal_counter == 0) begin         // Time to start setup data initialization 
                             o_data <= {SLAVE_ADDRESS, WRITE};
@@ -82,21 +86,22 @@ module I2C_Master(
                             state  <= WAIT_FOR_ACK;
                         end else if (internal_counter == 6) begin
                             state <= REPEATED_START;
-                            o_initiate_repeated_start <= 1;
+                            o_initiate_repeated_start <= 1;                           
                         end else if (internal_counter == 7) begin
-                            o_data <= {SLAVE_ADDRESS, READ};
                             state <= WAIT_FOR_ACK;
-                        end
-                        
-                    end
+                            o_data <= {SLAVE_ADDRESS, READ};
+                        end else if (internal_counter == 8) begin
+                            o_rx_begin <= 1;
+                            state <= RX_BEGIN;
+                        end    
+                    end else
+                        state <= START;
                 end
 
                 WAIT_FOR_ACK: begin 
                     if (i_ack_complete) begin
                         state <= ACK_HOLD;
                         internal_counter <= internal_counter + 1;
-                    end else if (i_tx_error) begin
-                        state <= ERROR;
                     end
                 end
 
@@ -106,22 +111,16 @@ module I2C_Master(
                     end
                 end
 
-                ERROR: begin 
-                    o_tx_begin <= 0;
-                    o_data <= 8'b1111_1101;
-                end
-
                 STOP: begin
                     o_stop_flag <= 1;
                     if (i_stop_complete) begin
                         o_stop_flag <= 0;
-                        state <= READ_TEMP_START;
+                        state <= HOLD_STOP;
                         stop_counter <= 0;
                     end
                 end
 
-                READ_TEMP_START: begin 
-                    o_initiate_repeated_start <= 0;
+                HOLD_STOP: begin 
                     stop_counter <= stop_counter + 1;
                     if (stop_counter > 60) begin
                         o_tx_begin <= 1;
@@ -131,11 +130,21 @@ module I2C_Master(
                 end
 
                 REPEATED_START : begin 
-                    if (i_rep_start_complete)
+                    if (i_repeated_start_complete) begin
                         state <= START;
+                        o_initiate_repeated_start <= 0;
                         internal_counter <= internal_counter + 1;
-                end
-            
+                    end
+                end   
+
+                RX_BEGIN: begin 
+                    if (i_byte_complete) begin
+                        o_rx_begin <= 0;
+                        internal_counter <= 4;
+                        o_tx_begin <= 1;
+                        state <= START;
+                    end
+                end    
                 default : state <= IDLE;
             endcase
         end
