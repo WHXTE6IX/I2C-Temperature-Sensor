@@ -1,6 +1,6 @@
 # I2C Temperature Sensor on Nexys A7-100T
 
-## Photo of it running
+## Project Photo
 ![Alt text](images/temppic.png)
 
 ## Description
